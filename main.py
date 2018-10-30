@@ -2,17 +2,15 @@ import requests
 import json
 import feedparser
 import anitopy
+from yaml import load, dump
 
-userList = ['Black Clover', 'Golden Kamuy']
-
-feedUrl = 'http://www.shanaproject.com/feeds/subber/Erai-raws/'
 rpcUrl = 'http://localhost:9091/transmission/rpc'
 
-def check_anime(title, resolution):
+def check_anime(title, feed):
     info = anitopy.parse(title)
-    for anime in userList:
+    for anime in feed['anime-list']:
         if anime == info['anime_title']:
-            if info['video_resolution'] == resolution:
+            if info['video_resolution'] == feed['resolution']:
                 return True
             return False
     
@@ -42,12 +40,20 @@ def add_torrent(torrent):
 
     print(response)
 
-def main():
-    feed = feedparser.parse(feedUrl)
+def handle_feed(feed):
+    result = feedparser.parse(feed['url'])
     
-    for entry in feed.entries:
-        if check_anime(entry.title, '720p'):
+    for entry in result.entries:
+        if check_anime(entry.title, feed):
             add_torrent(entry.guid)
+
+def main():
+    data = None
+    with open('config.yml', 'r') as file:
+        data = load(file)
+    
+    for feed in data['feeds']:
+        handle_feed(feed)
 
 if __name__ == '__main__':
     main()
