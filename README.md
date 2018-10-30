@@ -3,8 +3,7 @@ AniRSS Bot
 
 AniRSS Bot is a program that collect torrent urls from Anime feeds and queue them in transmission.
 
-TODO:
-=====
+**TODO:**
 
  - [ ] Make it configurable
 
