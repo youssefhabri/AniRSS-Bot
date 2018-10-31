@@ -10,28 +10,36 @@ config = {
     'rpc-url': None
 }
 
-def check_anime(title, feed):
-    info = anitopy.parse(title)
+feeds = []
 
-    if len(feed['resolutions']) == 0:
-        feed['resolutions'] = [config['resolution']]
+def check_torrent(title, feed_id):
+    info = anitopy.parse(title)
 
     check_title = False
     check_resolution = False
 
-    if len(feed['anime-list']) == 0:
+    if len(feeds[feed_id]['resolutions']) == 0:
+        feeds[feed_id]['resolutions'] = [config['resolution']]
+
+    try:
+        if info['video_resolution'] in feeds[feed_id]['resolutions']:
+            check_resolution = True
+    except KeyError:
+        check_resolution = False
+
+    if len(feeds[feed_id]['anime-list']) == 0:
         check_title = True
     else:
-        for anime in feed['anime-list']:
-            if anime == info['anime_title']:
+        for anime in feeds[feed_id]['anime-list']:
+            if anime['title'] == info['anime_title']:
                 check_title = True
-                continue
-            check_title = False
-    try:
-        if info['video_resolution'] in feed['resolutions']:
-            check_resolution = True
-    except:
-        check_resolution = False
+                try:
+                    if anime['resolution'] == info['video_resolution']:
+                        check_resolution = True
+                    else:
+                        check_resolution = False
+                except KeyError:
+                    print('No resolution was set for the anime: %s' % anime['title'])
 
     return check_title and check_resolution
 
@@ -59,12 +67,15 @@ def add_torrent(torrent):
 
     print(response)
 
-def handle_feed(feed):
-    result = feedparser.parse(feed['url'])
-    
-    for entry in result.entries:
-        if check_anime(entry.title, feed):
-            add_torrent(entry.guid)
+def handle_feeds():
+    for index, feed in enumerate(feeds):
+        if not feed['enabled']:
+            continue
+        
+        torrent = feedparser.parse(feed['url'])
+        for entry in torrent.entries:
+            if check_torrent(entry.title, int(index)):
+                add_torrent(entry.guid)
 
 def load_config(filename):
     data = None
@@ -83,15 +94,17 @@ def load_config(filename):
     except KeyError:
         config['rpc-url'] = 'http://localhost:9091/transmission/rpc'
 
+    # Load feeds
+    for feed in data['feeds']:
+        feeds.append(feed)
+
     return data
 
 def main():
     data = load_config('config.yml')
     print(data['rpc-server'])
-    pass
-    for feed in data['feeds']:
-        if feed['enabled']:
-            handle_feed(feed)
+    
+    handle_feeds()
 
 if __name__ == '__main__':
     main()
